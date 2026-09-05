@@ -16,6 +16,8 @@
   
   Live Demo: https://saumyayadav2603-dot.github.io/RiskFlag/
 
+  Video: https://youtu.be/0kcwtmVDfww
+
   ---
 
   ### PRECISION 70.0% · RECALL 41.2% · EVALUATED ON A HELD-OUT SET, NOT TUNED ON IT
