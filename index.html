@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RiskFlag — Explainable Fraud &amp; Return Detection</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#FBFAF7;
+    --ink:#1C1F26;
+    --muted:#6B7078;
+    --line:#E7E5DE;
+    --accent:#147A6C;
+    --accent-soft:#E1F0EC;
+    --alert:#C9573F;
+    --alert-soft:#F6E5E1;
+    --font:'Manrope', sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--font);
+    line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{ max-width:880px; margin:0 auto; padding:0 32px; }
+
+  header.hero{ padding:80px 0 56px; }
+  .kicker{
+    font-size:14px;
+    font-weight:600;
+    color:var(--accent);
+    margin-bottom:20px;
+  }
+  h1{
+    font-size:clamp(30px,5vw,44px);
+    font-weight:800;
+    line-height:1.2;
+    margin:0 0 20px;
+    max-width:15ch;
+    letter-spacing:-0.5px;
+  }
+  .lede{
+    font-size:18px;
+    color:var(--muted);
+    max-width:52ch;
+    margin:0 0 36px;
+  }
+  .stat-strip{
+    display:flex;
+    gap:40px;
+    flex-wrap:wrap;
+  }
+  .stat-num{ font-size:26px; font-weight:800; }
+  .stat-label{ font-size:13px; color:var(--muted); margin-top:2px; }
+
+  section{ padding:56px 0; border-top:1px solid var(--line); }
+  h2{ font-size:26px; font-weight:800; margin:0 0 10px; letter-spacing:-0.3px; }
+  .section-note{ color:var(--muted); max-width:56ch; margin:0 0 36px; font-size:15px; }
+
+  /* live scorer */
+  .scorer-card{
+    background:#fff;
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:36px;
+  }
+  .field{ margin-bottom:26px; }
+  .field:last-of-type{ margin-bottom:0; }
+  .field-label{
+    display:flex;
+    justify-content:space-between;
+    font-size:14px;
+    font-weight:600;
+    margin-bottom:10px;
+  }
+  .field-label span:last-child{ color:var(--accent); font-weight:700; }
+  input[type=range]{
+    width:100%;
+    accent-color:var(--accent);
+    height:4px;
+  }
+  .toggle-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:14px 0;
+    border-top:1px solid var(--line);
+  }
+  .toggle-row:first-of-type{ border-top:none; }
+  .toggle-row span{ font-size:15px; font-weight:500; }
+  .switch{
+    position:relative;
+    width:44px;
+    height:24px;
+    flex-shrink:0;
+  }
+  .switch input{ opacity:0; width:0; height:0; }
+  .slider-toggle{
+    position:absolute; cursor:pointer; inset:0;
+    background:#DCDAD1; border-radius:24px; transition:.2s;
+  }
+  .slider-toggle:before{
+    content:""; position:absolute; height:18px; width:18px;
+    left:3px; bottom:3px; background:white; border-radius:50%; transition:.2s;
+  }
+  .switch input:checked + .slider-toggle{ background:var(--accent); }
+  .switch input:checked + .slider-toggle:before{ transform:translateX(20px); }
+
+  .verdict{
+    margin-top:32px;
+    padding-top:28px;
+    border-top:1px solid var(--line);
+    display:flex;
+    align-items:center;
+    gap:20px;
+    flex-wrap:wrap;
+  }
+  .verdict-score{ font-size:44px; font-weight:800; line-height:1; }
+  .verdict-tag{
+    font-size:13px;
+    font-weight:700;
+    padding:6px 14px;
+    border-radius:20px;
+  }
+  .tag-clear{ background:var(--accent-soft); color:var(--accent); }
+  .tag-flag{ background:var(--alert-soft); color:var(--alert); }
+  .verdict-reasons{
+    width:100%;
+    color:var(--muted);
+    font-size:14px;
+  }
+
+  /* metrics — simple number strip, no boxes */
+  .metrics-strip{
+    display:flex;
+    gap:8px;
+    flex-wrap:wrap;
+  }
+  .metric{
+    flex:1 1 130px;
+    padding:20px 0;
+  }
+  .metric-num{ font-size:32px; font-weight:800; }
+  .metric-label{ font-size:13px; color:var(--muted); margin-top:4px; }
+  .callout{
+    margin-top:28px;
+    padding:18px 20px;
+    background:var(--accent-soft);
+    border-radius:12px;
+    font-size:14px;
+    color:#0F5A4F;
+  }
+
+  /* audit — simple rows, no table borders */
+  .audit-row{
+    display:flex;
+    gap:16px;
+    padding:16px 0;
+    border-bottom:1px solid var(--line);
+    align-items:baseline;
+    flex-wrap:wrap;
+  }
+  .audit-row:last-child{ border-bottom:none; }
+  .audit-id{ font-weight:700; min-width:70px; }
+  .audit-score{ color:var(--muted); font-size:14px; min-width:56px; }
+  .audit-reasons{ color:var(--muted); font-size:14px; flex:1; min-width:200px; }
+  .audit-verdict{ font-size:13px; font-weight:700; }
+  .v-correct{ color:var(--accent); }
+  .v-alarm{ color:var(--alert); }
+
+  /* architecture — plain numbered list */
+  .arch-item{ padding:24px 0; border-bottom:1px solid var(--line); }
+  .arch-item:last-child{ border-bottom:none; }
+  .arch-num{ font-size:13px; font-weight:700; color:var(--accent); margin-bottom:8px; }
+  .arch-item h3{ font-size:18px; font-weight:700; margin:0 0 8px; }
+  .arch-item p{ margin:0; color:var(--muted); font-size:15px; max-width:56ch; }
+
+  footer{
+    padding:48px 0 64px;
+    font-size:14px;
+    color:var(--muted);
+  }
+  footer a{ color:var(--ink); font-weight:600; text-decoration:none; }
+  footer a:hover{ text-decoration:underline; }
+
+  nav.contents{
+    display:flex;
+    gap:24px;
+    padding:20px 0;
+    border-top:1px solid var(--line);
+    border-bottom:1px solid var(--line);
+    font-size:14px;
+    font-weight:600;
+    flex-wrap:wrap;
+  }
+  nav.contents a{ color:var(--muted); text-decoration:none; }
+  nav.contents a:hover{ color:var(--ink); }
+
+  .version-btn{
+    font-family:var(--font);
+    font-size:13px;
+    font-weight:700;
+    padding:8px 16px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:#fff;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .version-btn-active{
+    background:var(--ink);
+    color:#fff;
+    border-color:var(--ink);
+  }
+  .version-note{
+    font-size:13px;
+    color:var(--muted);
+    margin:-8px 0 20px;
+  }
+  .control-grid{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:16px;
+    margin-top:24px;
+  }
+  .mini-field{ display:grid; gap:6px; }
+  .mini-field label{ font-size:13px; font-weight:700; }
+  .mini-field input{ width:100%; border:1px solid var(--line); border-radius:8px; padding:10px; font:inherit; }
+  .queue-summary{ display:flex; gap:28px; flex-wrap:wrap; margin:24px 0 8px; }
+  .queue-summary strong{ display:block; font-size:24px; }
+  .queue-summary span{ color:var(--muted); font-size:13px; }
+  .queue-item{ display:grid; grid-template-columns:90px 70px 1fr auto; gap:14px; align-items:center; padding:16px 0; border-bottom:1px solid var(--line); }
+  .queue-item:last-child{ border-bottom:none; }
+  .queue-id{ font-weight:800; }
+  .risk-high{ color:var(--alert); font-weight:800; }
+  .risk-medium{ color:#9A6A00; font-weight:800; }
+  .queue-evidence{ color:var(--muted); font-size:13px; }
+  .queue-actions{ display:flex; gap:6px; flex-wrap:wrap; }
+  .feedback-note{ min-width:150px; border:1px solid var(--line); border-radius:7px; padding:7px 8px; font:12px var(--font); }
+  .queue-tools{ display:flex; gap:8px; margin:16px 0; flex-wrap:wrap; }
+  .action-btn{ border:1px solid var(--line); background:#fff; border-radius:7px; padding:7px 9px; font:600 12px var(--font); cursor:pointer; }
+  .action-btn:hover{ border-color:var(--ink); }
+  .action-btn[data-decision="confirmed"]{ color:var(--alert); }
+  .action-btn[data-decision="clear"]{ color:var(--accent); }
+  .bar-row{ display:grid; grid-template-columns:120px 1fr 48px; gap:12px; align-items:center; margin:12px 0; font-size:13px; }
+  .bar-track{ background:var(--line); height:10px; border-radius:10px; overflow:hidden; }
+  .bar-fill{ height:100%; background:var(--accent); border-radius:10px; }
+  .compare-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:16px; }
+  .compare-panel{ border:1px solid var(--line); padding:20px; border-radius:10px; }
+  .compare-panel h3{ margin:0 0 12px; font-size:16px; }
+  .compare-panel p{ margin:8px 0; color:var(--muted); font-size:14px; }
+  @media (max-width:600px){
+    .control-grid,.compare-grid{ grid-template-columns:1fr; }
+    .queue-item{ grid-template-columns:70px 58px 1fr; }
+    .queue-actions{ grid-column:1 / -1; }
+  }
+  /* RiskFlag console theme */
+  :root{
+    --bg:#F4F7FB;
+    --surface:#FFFFFF;
+    --ink:#10233F;
+    --muted:#6D7B90;
+    --line:#DFE7F1;
+    --accent:#1777E8;
+    --accent-soft:#E9F2FF;
+    --alert:#D94A4A;
+    --alert-soft:#FFF0F0;
+    --font:'DM Sans', sans-serif;
+    --display:'Space Grotesk', sans-serif;
+    --shadow:0 12px 32px rgba(16,35,63,.07);
+  }
+  body{
+    background:var(--bg);
+    background-image:linear-gradient(rgba(23,119,232,.035) 1px, transparent 1px),linear-gradient(90deg, rgba(23,119,232,.035) 1px, transparent 1px);
+    background-size:32px 32px;
+    color:var(--ink);
+    font-size:15px;
+  }
+  .wrap{ max-width:1180px; padding:0 32px; }
+  header.hero{
+    margin:0 -32px;
+    padding:22px 32px 42px;
+    background:var(--ink);
+    color:#fff;
+    position:relative;
+    overflow:hidden;
+  }
+  header.hero:after{
+    content:"";
+    position:absolute;
+    width:420px;
+    height:420px;
+    right:-100px;
+    top:-240px;
+    border:1px solid rgba(115,190,255,.22);
+    border-radius:50%;
+    box-shadow:0 0 0 34px rgba(115,190,255,.05),0 0 0 68px rgba(115,190,255,.035);
+  }
+  .topbar{ display:flex; align-items:center; justify-content:space-between; position:relative; z-index:1; margin-bottom:58px; }
+  .brand{ display:flex; align-items:center; gap:10px; font-family:var(--display); font-size:20px; font-weight:700; letter-spacing:-.5px; }
+  .brand-mark{ width:28px; height:28px; display:grid; place-items:center; border-radius:8px; background:#2A8CF2; color:#fff; font-size:15px; box-shadow:0 5px 16px rgba(42,140,242,.35); }
+  .environment{ display:flex; align-items:center; gap:8px; color:#AFC2DC; font-size:12px; font-weight:600; letter-spacing:.02em; }
+  .environment:before{ content:""; width:7px; height:7px; background:#51D19A; border-radius:50%; box-shadow:0 0 0 4px rgba(81,209,154,.14); }
+  .kicker{ color:#8CC8FF; font-size:12px; letter-spacing:.08em; text-transform:uppercase; margin-bottom:16px; font-weight:700; position:relative; z-index:1; }
+  h1{ font-family:var(--display); font-size:clamp(36px,5vw,62px); line-height:1.04; letter-spacing:-2.8px; max-width:680px; margin:0 0 18px; position:relative; z-index:1; }
+  .lede{ color:#B7C7DB; font-size:16px; line-height:1.7; max-width:620px; margin:0 0 30px; position:relative; z-index:1; }
+  .stat-strip{ gap:0; position:relative; z-index:1; }
+  .stat-strip > div{ min-width:150px; padding:0 22px; border-left:1px solid rgba(255,255,255,.16); }
+  .stat-strip > div:first-child{ padding-left:0; border-left:0; }
+  .stat-num{ font-family:var(--display); font-size:24px; color:#fff; }
+  .stat-label{ color:#93A7C0; font-size:11px; text-transform:uppercase; letter-spacing:.07em; }
+  nav.contents{ margin:0 -32px; padding:0 32px; min-height:58px; align-items:center; background:#fff; border:0; border-bottom:1px solid var(--line); box-shadow:0 2px 8px rgba(16,35,63,.03); gap:25px; }
+  nav.contents a{ color:#718096; font-size:12px; letter-spacing:.01em; }
+  nav.contents a:first-child{ color:var(--accent); }
+  section{ padding:68px 0; border-top:0; }
+  section + section{ border-top:1px solid var(--line); }
+  h2{ font-family:var(--display); color:var(--ink); font-size:30px; letter-spacing:-1px; margin-bottom:10px; }
+  .section-note{ color:#728198; max-width:68ch; font-size:14px; line-height:1.7; margin-bottom:28px; }
+  code{ color:var(--accent); background:var(--accent-soft); padding:2px 5px; border-radius:4px; font-size:.9em; }
+  .scorer-card{ background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:28px; box-shadow:var(--shadow); display:grid; grid-template-columns:1.05fr .95fr; gap:28px 42px; }
+  .scorer-card .field,.scorer-card .toggle-row,.scorer-card .control-grid{ grid-column:1; }
+  .scorer-card .verdict{ grid-column:2; grid-row:1 / span 4; align-self:stretch; margin-top:0; padding:26px; border:1px solid #CFE1F7; border-radius:12px; background:#F7FBFF; align-content:center; }
+  .field{ margin-bottom:19px; }
+  .field-label{ color:#30425B; font-size:13px; margin-bottom:9px; }
+  .field-label span:last-child{ color:var(--accent); }
+  input[type=range]{ accent-color:var(--accent); }
+  .toggle-row{ padding:13px 0; border-top:1px solid #EDF1F6; }
+  .toggle-row span{ color:#30425B; font-size:14px; }
+  .slider-toggle{ background:#D6E0EC; }
+  .switch input:checked + .slider-toggle{ background:var(--accent); }
+  .verdict-score{ font-family:var(--display); color:var(--ink); font-size:72px; letter-spacing:-4px; }
+  .verdict-tag{ border-radius:5px; letter-spacing:.08em; font-size:11px; }
+  .tag-clear{ background:#E6F8F0; color:#087A52; }
+  .tag-flag{ background:var(--alert-soft); color:var(--alert); }
+  .verdict-reasons{ color:#6E7F95; line-height:1.7; }
+  .control-grid{ gap:12px; margin-top:14px; }
+  .mini-field{ gap:5px; }
+  .mini-field label{ color:#718096; font-size:11px; letter-spacing:.02em; }
+  .mini-field input,.feedback-note{ border-color:#D8E2EE; background:#FBFDFF; border-radius:6px; color:var(--ink); }
+  .version-btn{ border-radius:6px; padding:9px 13px; background:#fff; border-color:var(--line); font-size:12px; }
+  .version-btn-active{ background:var(--ink); border-color:var(--ink); }
+  .metrics-strip{ gap:12px; }
+  .metric{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:18px 20px; box-shadow:0 5px 18px rgba(16,35,63,.04); }
+  .metric-num{ font-family:var(--display); color:var(--ink); font-size:27px; }
+  .metric-label{ color:#7B899C; font-size:11px; text-transform:uppercase; letter-spacing:.05em; }
+  .callout{ background:#EAF4FF; border:1px solid #CFE4FA; border-radius:9px; color:#225A91; }
+  .queue-summary{ gap:12px; }
+  .queue-summary > div{ background:#fff; border:1px solid var(--line); border-radius:9px; padding:14px 18px; min-width:130px; }
+  .queue-summary strong{ color:var(--ink); font-family:var(--display); font-size:25px; }
+  .queue-item{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:16px 18px; margin:9px 0; box-shadow:0 4px 14px rgba(16,35,63,.035); }
+  .queue-item:last-child{ border:1px solid var(--line); }
+  .queue-id{ color:var(--ink); font-family:var(--display); }
+  .risk-high{ color:var(--alert); font-size:12px; }
+  .risk-medium{ color:#A87400; font-size:12px; }
+  .queue-evidence{ color:#718096; font-size:13px; }
+  .action-btn{ border-color:#D8E2EE; border-radius:6px; color:#4B607A; background:#fff; }
+  .action-btn:hover{ border-color:var(--accent); color:var(--accent); background:#F5FAFF; }
+  .action-btn[data-decision="confirmed"]{ color:var(--alert); }
+  .action-btn[data-decision="clear"]{ color:#087A52; }
+  .audit-row{ border-color:#E8EEF5; }
+  .audit-id{ color:var(--ink); font-family:var(--display); }
+  .audit-reasons{ color:#718096; }
+  .arch-item{ border-color:#E1E8F0; }
+  .arch-num{ color:var(--accent); letter-spacing:.08em; }
+  .arch-item h3{ font-family:var(--display); color:var(--ink); }
+  .arch-item p{ color:#718096; }
+  .compare-panel{ border-color:var(--line); background:#fff; box-shadow:0 5px 18px rgba(16,35,63,.04); }
+  .compare-panel h3{ font-family:var(--display); color:var(--ink); }
+  .investigation-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  .investigation-panel{ background:#fff; border:1px solid var(--line); border-radius:10px; padding:22px; box-shadow:0 5px 18px rgba(16,35,63,.04); }
+  .panel-kicker{ color:var(--accent); font-size:10px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; margin-bottom:8px; }
+  .investigation-panel h3{ font-family:var(--display); margin:0 0 16px; color:var(--ink); font-size:18px; }
+  .timeline{ display:grid; gap:0; }
+  .timeline-item{ display:grid; grid-template-columns:62px 15px 1fr; gap:10px; min-height:55px; }
+  .timeline-time{ color:#8492A5; font-size:11px; padding-top:2px; }
+  .timeline-dot{ width:9px; height:9px; margin-top:5px; border-radius:50%; background:var(--accent); box-shadow:0 0 0 4px var(--accent-soft); position:relative; }
+  .timeline-item:not(:last-child) .timeline-dot:after{ content:""; position:absolute; width:1px; height:48px; top:9px; left:4px; background:#CFE0F2; }
+  .timeline-copy{ color:#40546E; font-size:13px; }
+  .timeline-copy strong{ display:block; color:var(--ink); font-size:13px; }
+  .entity-map{ display:flex; align-items:center; justify-content:center; gap:8px; flex-wrap:wrap; min-height:170px; }
+  .entity{ display:grid; place-items:center; gap:4px; width:92px; height:68px; border:1px solid #CFE0F2; border-radius:9px; background:#F7FBFF; color:#4D6682; font-size:11px; text-align:center; }
+  .entity strong{ color:var(--ink); font-size:13px; }
+  .entity-link{ width:20px; height:1px; background:#A9C8E8; }
+  .counterfactual{ margin-top:18px; padding:14px; background:#F5F9FE; border-left:3px solid var(--accent); color:#50657D; font-size:13px; line-height:1.6; }
+  .counterfactual strong{ color:var(--ink); }
+  .decision-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:8px; }
+  .decision-option{ border:1px solid var(--line); border-radius:7px; background:#fff; padding:12px 10px; color:#51647C; cursor:pointer; font:600 12px var(--font); text-align:left; }
+  .decision-option:hover,.decision-option.active{ border-color:var(--accent); color:var(--accent); background:var(--accent-soft); }
+  .decision-impact{ margin-top:14px; color:#61758D; font-size:13px; min-height:40px; }
+  footer{ color:#78879B; }
+  footer a{ color:var(--accent); }
+  @media (max-width:760px){
+    header.hero{ margin:0 -24px; padding:20px 24px 36px; }
+    nav.contents{ margin:0 -24px; padding:0 24px; overflow:auto; flex-wrap:nowrap; white-space:nowrap; }
+    .scorer-card{ display:block; padding:20px; }
+    .scorer-card .verdict{ margin-top:28px; min-height:220px; }
+    .stat-strip > div{ min-width:50%; padding:12px 14px; }
+    .stat-strip > div:nth-child(odd){ padding-left:0; border-left:0; }
+    .investigation-grid{ grid-template-columns:1fr; }
+    .decision-grid{ grid-template-columns:repeat(2,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="hero">
+    <div class="topbar">
+      <div class="brand"><span class="brand-mark">R</span>iskFlag</div>
+      <div class="environment">DEFENSE MODE · LOCAL DATA</div>
+    </div>
+    <div class="kicker">RiskFlag · Razorpay AI Buildathon · Track 02 · AI Risk Manager</div>
+    <h1>RiskFlag: explain the risky order. Never act alone.</h1>
+    <p class="lede">A rule-based return &amp; chargeback detector with honest precision and recall on a held-out test set. Every flag comes with a plain-English reason — the system surfaces risk, it never blocks money on its own.</p>
+    <div class="stat-strip">
+      <div><div class="stat-num">70.0%</div><div class="stat-label">v2 precision</div></div>
+      <div><div class="stat-num">41.2%</div><div class="stat-label">v2 recall</div></div>
+      <div><div class="stat-num">45</div><div class="stat-label">held-out test rows</div></div>
+      <div><div class="stat-num">0</div><div class="stat-label">runtime LLM calls</div></div>
+    </div>
+  </header>
+
+  <nav class="contents">
+    <a href="#scorer">Live scorer</a>
+    <a href="#queue">Review queue</a>
+    <a href="#investigation">Investigation</a>
+    <a href="#metrics">Metrics</a>
+    <a href="#economics">Threshold economics</a>
+    <a href="#monitoring">Monitoring</a>
+    <a href="#models">Models</a>
+    <a href="#audit">Audit trail</a>
+    <a href="#arch">Architecture</a>
+    <a href="https://github.com/YOUR-USERNAME/return-risk-scorer">GitHub</a>
+  </nav>
+
+  <section id="scorer">
+    <h2>Try it live</h2>
+    <p class="section-note">Runs the exact scorer logic from <code>risk_scorer.py</code>, right here in your browser. Switch versions to see a real, tested trade-off — not a hypothetical one.</p>
+
+    <div style="display:flex; gap:8px; margin-bottom:20px;">
+      <button id="btnV1" class="version-btn version-btn-active">v1 — independent rules</button>
+      <button id="btnV2" class="version-btn">v2 — corroborated device+address</button>
+    </div>
+
+    <div class="scorer-card">
+      <div class="field">
+        <div class="field-label"><span>Amount</span><span id="amountVal">₹3,000</span></div>
+        <input type="range" id="amount" min="200" max="15000" step="100" value="3000">
+      </div>
+      <div class="field">
+        <div class="field-label"><span>Hour of purchase</span><span id="hourVal">14:00</span></div>
+        <input type="range" id="hour" min="0" max="23" step="1" value="14">
+      </div>
+      <div class="field">
+        <div class="field-label"><span>Customer account age</span><span id="ageVal">180 days</span></div>
+        <input type="range" id="customerAge" min="0" max="1000" step="10" value="180">
+      </div>
+
+      <div class="toggle-row">
+        <span>First-time customer</span>
+        <label class="switch"><input type="checkbox" id="firstTime"><span class="slider-toggle"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>New / unrecognized device</span>
+        <label class="switch"><input type="checkbox" id="newDevice"><span class="slider-toggle"></span></label>
+      </div>
+      <div class="toggle-row">
+        <span>Billing ≠ delivery address</span>
+        <label class="switch"><input type="checkbox" id="addrMismatch"><span class="slider-toggle"></span></label>
+      </div>
+      <div class="control-grid">
+        <div class="mini-field"><label for="velocity">Transactions in last 10 min</label><input id="velocity" type="number" min="0" max="20" value="0"></div>
+        <div class="mini-field"><label for="sharedDevices">Accounts sharing device</label><input id="sharedDevices" type="number" min="1" max="20" value="1"></div>
+      </div>
+
+      <div class="verdict">
+        <div class="verdict-score" id="scoreOut">0</div>
+        <div class="verdict-tag tag-clear" id="tagOut">CLEAR</div>
+        <div class="verdict-reasons" id="reasonsOut">No risk signals present.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="queue">
+    <h2>Review queue</h2>
+    <p class="section-note">Prioritize the strongest evidence first. A reviewer decision is recorded for learning; it never blocks or refunds a transaction.</p>
+    <div class="queue-summary">
+      <div><strong id="openCount">4</strong><span>open reviews</span></div>
+      <div><strong id="confirmedCount">0</strong><span>confirmed risk</span></div>
+      <div><strong id="clearedCount">0</strong><span>cleared by reviewers</span></div>
+    </div>
+    <div class="queue-tools">
+      <button id="exportFeedback" class="action-btn">Export feedback CSV</button>
+      <button id="resetFeedback" class="action-btn">Reset feedback database</button>
+    </div>
+    <div id="reviewQueue"></div>
+  </section>
+
+  <section id="investigation">
+    <h2>Investigate before you decide</h2>
+    <p class="section-note">RiskFlag connects the evidence around a flagged order so a reviewer can see the sequence, the relationships, and the least disruptive response.</p>
+    <div class="investigation-grid">
+      <div class="investigation-panel">
+        <div class="panel-kicker">Case TX0119 · score 6 · high risk</div>
+        <h3>Evidence timeline</h3>
+        <div class="timeline">
+          <div class="timeline-item"><div class="timeline-time">14:02</div><div class="timeline-dot"></div><div class="timeline-copy"><strong>New device detected</strong>First seen on this account</div></div>
+          <div class="timeline-item"><div class="timeline-time">14:04</div><div class="timeline-dot"></div><div class="timeline-copy"><strong>Address mismatch</strong>Billing and delivery locations differ</div></div>
+          <div class="timeline-item"><div class="timeline-time">14:06</div><div class="timeline-dot"></div><div class="timeline-copy"><strong>Velocity spike</strong>3 transactions from this device in 10 minutes</div></div>
+          <div class="timeline-item"><div class="timeline-time">14:08</div><div class="timeline-dot"></div><div class="timeline-copy"><strong>High-value order</strong>₹12,400 order submitted</div></div>
+        </div>
+      </div>
+      <div class="investigation-panel">
+        <div class="panel-kicker">Connected evidence</div>
+        <h3>Entity relationship view</h3>
+        <div class="entity-map">
+          <div class="entity"><span>Customer</span><strong>C-1042</strong></div><div class="entity-link"></div>
+          <div class="entity"><span>Device</span><strong>DV-88A</strong></div><div class="entity-link"></div>
+          <div class="entity"><span>3 accounts</span><strong>Linked</strong></div>
+          <div class="entity"><span>Address</span><strong>Mismatch</strong></div>
+        </div>
+        <div class="counterfactual"><strong>Counterfactual:</strong> without the shared-device signal, this order would move from high risk to medium risk. The analyst can see exactly what changed the decision.</div>
+      </div>
+    </div>
+    <div class="investigation-panel" style="margin-top:16px;">
+      <div class="panel-kicker">Reviewer decision simulator</div>
+      <h3>Choose the least harmful next step</h3>
+      <div class="decision-grid">
+        <button class="decision-option active" data-impact="Allow keeps customer friction at zero, but accepts the full estimated missed-risk exposure.">Allow</button>
+        <button class="decision-option" data-impact="Request verification adds light friction while preserving the order if the customer can verify ownership.">Request verification</button>
+        <button class="decision-option" data-impact="Manual review pauses fulfillment and gives an analyst time to inspect the connected evidence.">Manual review</button>
+        <button class="decision-option" data-impact="Escalate sends the case to a senior queue for high-value or repeated-entity patterns.">Escalate</button>
+      </div>
+      <div class="decision-impact" id="decisionImpact">Allow keeps customer friction at zero, but accepts the full estimated missed-risk exposure.</div>
+    </div>
+  </section>
+
+  <section id="metrics">
+    <h2>Honest numbers</h2>
+    <p class="section-note">Threshold chosen on the train split by maximizing F1. Test split untouched until this ran once.</p>
+
+    <div class="metrics-strip">
+      <div class="metric"><div class="metric-num">105 / 45</div><div class="metric-label">train / test split</div></div>
+      <div class="metric"><div class="metric-num">25.3%</div><div class="metric-label">base fraud rate</div></div>
+      <div class="metric"><div class="metric-num">3</div><div class="metric-label">v2 false positives</div></div>
+      <div class="metric"><div class="metric-num">10</div><div class="metric-label">v2 false negatives</div></div>
+    </div>
+
+    <div class="callout">
+      A rules baseline cannot perfectly separate noisy data. These numbers are reported as-is, while reviewer outcomes below create the feedback needed for a learned model.
+    </div>
+
+    <div style="margin-top:36px;">
+      <h3 style="font-size:16px; margin:0 0 4px;">Tested: does corroborating signals fix precision?</h3>
+      <p class="section-note" style="margin-bottom:16px;">v2 requires new device + address mismatch together instead of scoring each alone. Same train/test split as v1 — a controlled comparison, not a cherry-picked one.</p>
+      <div class="audit-row" style="border-bottom:1px solid var(--line); font-weight:700;">
+        <div style="min-width:70px;"></div>
+        <div style="flex:1;">Metric</div>
+        <div style="min-width:60px;">v1</div>
+        <div style="min-width:60px;">v2</div>
+      </div>
+      <div class="audit-row"><div style="min-width:70px;"></div><div style="flex:1;">Precision</div><div style="min-width:60px;">75.0%</div><div style="min-width:60px;">70.0%</div></div>
+      <div class="audit-row"><div style="min-width:70px;"></div><div style="flex:1;">Recall</div><div style="min-width:60px;">17.6%</div><div style="min-width:60px;">41.2%</div></div>
+      <div class="audit-row"><div style="min-width:70px;"></div><div style="flex:1;">False positives</div><div style="min-width:60px;">1</div><div style="min-width:60px;">3</div></div>
+      <div class="audit-row"><div style="min-width:70px;"></div><div style="flex:1;">False negatives</div><div style="min-width:60px;">14</div><div style="min-width:60px;">10</div></div>
+      <p style="font-size:14px; color:var(--muted); margin-top:16px;">Result: the hypothesis didn't hold as expected — precision stayed flat, recall improved instead. Reported exactly as measured. Full explanation in the README.</p>
+    </div>
+  </section>
+
+  <section id="economics">
+    <h2>Threshold economics</h2>
+    <p class="section-note">Choose the operating point using the merchant's real costs, not an abstract metric alone.</p>
+    <div class="control-grid">
+      <div class="mini-field"><label for="reviewCost">Review cost (₹)</label><input id="reviewCost" type="number" min="0" value="50"></div>
+      <div class="mini-field"><label for="missCost">Missed-risk cost (₹)</label><input id="missCost" type="number" min="0" value="1500"></div>
+      <div class="mini-field"><label for="threshold">Proposed threshold</label><input id="threshold" type="number" min="1" max="10" value="3"></div>
+    </div>
+    <div class="callout" id="costOutput">Expected cost: ₹0 per 45 test transactions.</div>
+    <div id="thresholdBars"></div>
+  </section>
+
+  <section id="monitoring">
+    <h2>Monitoring</h2>
+    <p class="section-note">A small operational view makes model quality visible after launch, when the data distribution changes.</p>
+    <div class="metrics-strip">
+      <div class="metric"><div class="metric-num" id="flagRate">0%</div><div class="metric-label">flag rate</div></div>
+      <div class="metric"><div class="metric-num">12 min</div><div class="metric-label">median review time</div></div>
+      <div class="metric"><div class="metric-num" id="feedbackRate">0%</div><div class="metric-label">queue decisions</div></div>
+    </div>
+    <div class="bar-row"><span>High amount</span><div class="bar-track"><div class="bar-fill" style="width:62%"></div></div><strong>62%</strong></div>
+    <div class="bar-row"><span>New device</span><div class="bar-track"><div class="bar-fill" style="width:48%"></div></div><strong>48%</strong></div>
+    <div class="bar-row"><span>Velocity</span><div class="bar-track"><div class="bar-fill" style="width:31%"></div></div><strong>31%</strong></div>
+    <div class="bar-row"><span>Address mismatch</span><div class="bar-track"><div class="bar-fill" style="width:18%"></div></div><strong>18%</strong></div>
+  </section>
+
+  <section id="models">
+    <h2>Rules baseline vs learned model</h2>
+    <p class="section-note">Keep the transparent rules as a fallback while reviewer outcomes accumulate enough labels for a calibrated model.</p>
+    <div class="compare-grid">
+      <div class="compare-panel"><h3>Explainable rules</h3><p>Current v2 score: <strong>70.0% precision</strong> and <strong>41.2% recall</strong>.</p><p>Strength: every flag has a visible reason. Weakness: fixed weights do not adapt to drift.</p></div>
+      <div class="compare-panel"><h3>Next learned model</h3><p>Candidate: logistic regression trained on reviewer decisions.</p><p>Report calibration, precision-recall trade-offs, and feature contributions before enabling it in the queue.</p></div>
+    </div>
+  </section>
+
+  <section id="audit">
+    <h2>Every flag, explained</h2>
+    <p class="section-note">Sample rows from the held-out test run — no black-box scores, just the rules that fired.</p>
+
+    <div id="auditList"></div>
+  </section>
+
+  <section id="arch">
+    <h2>How it works</h2>
+
+    <div class="arch-item">
+      <div class="arch-num">01 — Data</div>
+      <h3>150 synthetic transactions</h3>
+      <p>A noisy, probability-based ground-truth label — risk signals correlate with fraud but don't guarantee it, so the test is meaningful. 70/30 split; test rows are never touched during tuning.</p>
+    </div>
+    <div class="arch-item">
+      <div class="arch-num">02 — Scorer</div>
+      <h3>Eight weighted, readable signals</h3>
+      <p>Device, address, amount, customer age, order history, velocity, shared devices, and purchase hour. Threshold picked on train only, then locked before touching test.</p>
+    </div>
+    <div class="arch-item">
+      <div class="arch-num">03 — Decision</div>
+      <h3>Flag or clear — never act</h3>
+      <p>Above threshold, a transaction is flagged and surfaced to a human with its reasons. The system never blocks, refunds, or moves money on its own — defense-only, by design.</p>
+    </div>
+  </section>
+
+  <footer>
+    Built for the Razorpay AI Buildathon, Track 02.<br>
+    <a href="https://github.com/YOUR-USERNAME/return-risk-scorer">github.com/saumyayadav2603-dot/RiskFlag</a>
+  </footer>
+</div>
+
+<script>
+  // v1: each signal scored independently.
+  function scoreTransactionV1({ amount, hour, age, firstTime, newDevice, addrMismatch, velocity, sharedDevices }) {
+    let score = 0;
+    const reasons = [];
+    if (newDevice) { score += 2; reasons.push('new device'); }
+    if (addrMismatch) { score += 2; reasons.push('address mismatch'); }
+    if (amount > 8000) { score += 1; reasons.push('high amount'); }
+    if (firstTime) { score += 1; reasons.push('first-time customer'); }
+    if (age < 30) { score += 1; reasons.push('new customer account'); }
+    if (velocity >= 3) { score += 2; reasons.push('high transaction velocity'); }
+    if (sharedDevices >= 3) { score += 2; reasons.push('device shared by 3+ accounts'); }
+    if (hour < 5 || hour > 23) { score += 1; reasons.push('odd hour'); }
+    return { score, reasons };
+  }
+
+  // v2: device + address only score at full weight when they co-occur.
+  function scoreTransactionV2({ amount, hour, age, firstTime, newDevice, addrMismatch, velocity, sharedDevices }) {
+    let score = 0;
+    const reasons = [];
+    if (newDevice && addrMismatch) {
+      score += 5;
+      reasons.push('new device AND address mismatch (corroborated)');
+    } else {
+      if (newDevice) { score += 1; reasons.push('new device (uncorroborated)'); }
+      if (addrMismatch) { score += 1; reasons.push('address mismatch (uncorroborated)'); }
+    }
+    if (amount > 8000) { score += 1; reasons.push('high amount'); }
+    if (firstTime) { score += 1; reasons.push('first-time customer'); }
+    if (age < 30) { score += 1; reasons.push('new customer account'); }
+    if (velocity >= 3) { score += 2; reasons.push('high transaction velocity'); }
+    if (sharedDevices >= 3) { score += 2; reasons.push('device shared by 3+ accounts'); }
+    if (hour < 5 || hour > 23) { score += 1; reasons.push('odd hour'); }
+    return { score, reasons };
+  }
+
+  const VERSIONS = {
+    v1: { fn: scoreTransactionV1, threshold: 4, precision: '75.0%', recall: '17.6%' },
+    v2: { fn: scoreTransactionV2, threshold: 3, precision: '70.0%', recall: '41.2%' },
+  };
+  let currentVersion = 'v1';
+
+  const amountEl = document.getElementById('amount');
+  const hourEl = document.getElementById('hour');
+  const customerAgeEl = document.getElementById('customerAge');
+  const velocityEl = document.getElementById('velocity');
+  const sharedDevicesEl = document.getElementById('sharedDevices');
+  const firstTimeEl = document.getElementById('firstTime');
+  const newDeviceEl = document.getElementById('newDevice');
+  const addrMismatchEl = document.getElementById('addrMismatch');
+  const amountVal = document.getElementById('amountVal');
+  const hourVal = document.getElementById('hourVal');
+  const ageVal = document.getElementById('ageVal');
+  const scoreOut = document.getElementById('scoreOut');
+  const tagOut = document.getElementById('tagOut');
+  const reasonsOut = document.getElementById('reasonsOut');
+  const btnV1 = document.getElementById('btnV1');
+  const btnV2 = document.getElementById('btnV2');
+
+  function render() {
+    const amount = Number(amountEl.value);
+    const hour = Number(hourEl.value);
+    const age = Number(customerAgeEl.value);
+    const velocity = Number(velocityEl.value);
+    const sharedDevices = Number(sharedDevicesEl.value);
+    amountVal.textContent = '₹' + amount.toLocaleString('en-IN');
+    hourVal.textContent = String(hour).padStart(2, '0') + ':00';
+    ageVal.textContent = age + ' days';
+
+    const version = VERSIONS[currentVersion];
+    const { score, reasons } = version.fn({
+      amount, hour,
+      age, velocity, sharedDevices,
+      firstTime: firstTimeEl.checked,
+      newDevice: newDeviceEl.checked,
+      addrMismatch: addrMismatchEl.checked,
+    });
+
+    scoreOut.textContent = score;
+    if (score >= version.threshold) {
+      tagOut.textContent = 'FLAGGED';
+      tagOut.className = 'verdict-tag tag-flag';
+      reasonsOut.textContent = reasons.join(', ') + ` (threshold ≥${version.threshold} for ${currentVersion})`;
+    } else {
+      tagOut.textContent = 'CLEAR';
+      tagOut.className = 'verdict-tag tag-clear';
+      reasonsOut.textContent = (reasons.length ? reasons.join(', ') + ' — ' : '') + `below threshold (≥${version.threshold} for ${currentVersion}).`;
+    }
+  }
+
+  function setVersion(v) {
+    currentVersion = v;
+    btnV1.className = v === 'v1' ? 'version-btn version-btn-active' : 'version-btn';
+    btnV2.className = v === 'v2' ? 'version-btn version-btn-active' : 'version-btn';
+    render();
+  }
+  btnV1.addEventListener('click', () => setVersion('v1'));
+  btnV2.addEventListener('click', () => setVersion('v2'));
+
+  [amountEl, hourEl, customerAgeEl, velocityEl, sharedDevicesEl, firstTimeEl, newDeviceEl, addrMismatchEl].forEach(el => el.addEventListener('input', render));
+  render();
+
+  const auditRows = [
+    { id: 'TX0109', score: 4, reasons: 'address mismatch, high amount, odd hour', actual: true },
+    { id: 'TX0113', score: 3, reasons: 'new device, odd hour', actual: false },
+    { id: 'TX0115', score: 3, reasons: 'new device, odd hour', actual: false },
+    { id: 'TX0120', score: 3, reasons: 'new device, high amount', actual: true },
+    { id: 'TX0121', score: 4, reasons: 'new device, high amount, odd hour', actual: false },
+    { id: 'TX0134', score: 3, reasons: 'address mismatch, odd hour', actual: false },
+    { id: 'TX0135', score: 3, reasons: 'new device, odd hour', actual: false },
+    { id: 'TX0137', score: 3, reasons: 'new device, high amount', actual: false },
+  ];
+  const list = document.getElementById('auditList');
+  auditRows.forEach(r => {
+    const row = document.createElement('div');
+    row.className = 'audit-row';
+    const vClass = r.actual ? 'v-correct' : 'v-alarm';
+    const vText = r.actual ? 'correct' : 'false alarm';
+    row.innerHTML = `
+      <div class="audit-id">${r.id}</div>
+      <div class="audit-score">score ${r.score}</div>
+      <div class="audit-reasons">${r.reasons}</div>
+      <div class="audit-verdict ${vClass}">${vText}</div>
+    `;
+    list.appendChild(row);
+  });
+
+  const queueRows = [
+    { id: 'TX0106', score: 3, evidence: 'high amount, velocity 3/10m', severity: 'medium' },
+    { id: 'TX0107', score: 4, evidence: 'high amount, velocity 3/10m, odd hour', severity: 'high' },
+    { id: 'TX0119', score: 6, evidence: 'new device, address mismatch, high amount', severity: 'high' },
+    { id: 'TX0138', score: 3, evidence: 'high amount, shared device (3 accounts)', severity: 'medium' },
+  ];
+  const queue = document.getElementById('reviewQueue');
+  let savedFeedback = {};
+  const decisions = { confirmed: 0, clear: 0 };
+  function updateQueueSummary() {
+    const decided = decisions.confirmed + decisions.clear;
+    document.getElementById('openCount').textContent = queueRows.length - decided;
+    document.getElementById('confirmedCount').textContent = decisions.confirmed;
+    document.getElementById('clearedCount').textContent = decisions.clear;
+    document.getElementById('feedbackRate').textContent = Math.round((decided / queueRows.length) * 100) + '%';
+  }
+  function renderQueue() {
+    queue.innerHTML = '';
+    decisions.confirmed = 0;
+    decisions.clear = 0;
+    queueRows.forEach(item => {
+      const row = document.createElement('div');
+      row.className = 'queue-item';
+      const saved = savedFeedback[item.id];
+      row.innerHTML = `<div class="queue-id">${item.id}</div><div class="risk-${item.severity}">score ${item.score}</div><div class="queue-evidence">${item.evidence}</div><div class="queue-actions"><input class="feedback-note" type="text" placeholder="Reviewer note" aria-label="Reviewer note for ${item.id}"><button class="action-btn" data-decision="confirmed">Confirm risk</button><button class="action-btn" data-decision="clear">Clear</button></div>`;
+      if (saved) {
+        row.dataset.decided = saved.decision;
+        decisions[saved.decision] += 1;
+        row.querySelector('.queue-actions').innerHTML = `${saved.decision === 'confirmed' ? 'Confirmed risk' : 'Cleared by reviewer'} <small>${new Date(saved.reviewedAt).toLocaleString()}</small>`;
+      }
+      row.querySelectorAll('button').forEach(button => button.addEventListener('click', async () => {
+        if (row.dataset.decided) return;
+        const feedback = {
+          transactionId: item.id,
+          score: item.score,
+          evidence: item.evidence,
+          decision: button.dataset.decision,
+          note: row.querySelector('.feedback-note').value.trim(),
+          reviewedAt: new Date().toISOString(),
+        };
+        const response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(feedback),
+        });
+        if (!response.ok) {
+          alert('Could not save feedback. Is the RiskFlag server running?');
+          return;
+        }
+        row.dataset.decided = button.dataset.decision;
+        decisions[button.dataset.decision] += 1;
+        savedFeedback[item.id] = feedback;
+        row.querySelector('.queue-actions').textContent = button.dataset.decision === 'confirmed' ? 'Confirmed risk' : 'Cleared by reviewer';
+        updateQueueSummary();
+      }));
+      queue.appendChild(row);
+    });
+    updateQueueSummary();
+  }
+
+  async function loadFeedback() {
+    try {
+      const response = await fetch('/api/feedback');
+      if (!response.ok) throw new Error('feedback request failed');
+      savedFeedback = await response.json();
+      renderQueue();
+    } catch (error) {
+      queue.textContent = 'Start server.py to load the shared review queue.';
+    }
+  }
+  document.getElementById('exportFeedback').addEventListener('click', () => {
+    window.location.href = '/api/feedback.csv';
+  });
+  document.getElementById('resetFeedback').addEventListener('click', async () => {
+    const response = await fetch('/api/feedback', { method: 'DELETE' });
+    if (!response.ok) {
+      alert('Could not reset feedback. Is the RiskFlag server running?');
+      return;
+    }
+    savedFeedback = {};
+    renderQueue();
+  });
+  loadFeedback();
+
+  const decisionImpact = document.getElementById('decisionImpact');
+  document.querySelectorAll('.decision-option').forEach(option => option.addEventListener('click', () => {
+    document.querySelectorAll('.decision-option').forEach(item => item.classList.remove('active'));
+    option.classList.add('active');
+    decisionImpact.textContent = option.dataset.impact;
+  }));
+
+  const reviewCostEl = document.getElementById('reviewCost');
+  const missCostEl = document.getElementById('missCost');
+  const thresholdEl = document.getElementById('threshold');
+  const costOutput = document.getElementById('costOutput');
+  const thresholdBars = document.getElementById('thresholdBars');
+  const thresholdOutcomes = [
+    { threshold: 2, flagged: 22, falsePositives: 9, falseNegatives: 7 },
+    { threshold: 3, flagged: 10, falsePositives: 3, falseNegatives: 10 },
+    { threshold: 4, flagged: 6, falsePositives: 1, falseNegatives: 14 },
+    { threshold: 5, flagged: 3, falsePositives: 0, falseNegatives: 16 },
+  ];
+  function renderEconomics() {
+    const reviewCost = Number(reviewCostEl.value) || 0;
+    const missCost = Number(missCostEl.value) || 0;
+    const proposed = Number(thresholdEl.value) || 3;
+    thresholdBars.innerHTML = '';
+    let best = null;
+    thresholdOutcomes.forEach(outcome => {
+      const cost = outcome.falsePositives * reviewCost + outcome.falseNegatives * missCost;
+      if (!best || cost < best.cost) best = { threshold: outcome.threshold, cost };
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+      row.innerHTML = `<span>Threshold ${outcome.threshold}</span><div class="bar-track"><div class="bar-fill" style="width:${Math.min(100, cost / Math.max(missCost, 1) / 0.2)}%"></div></div><strong>₹${cost.toLocaleString('en-IN')}</strong>`;
+      thresholdBars.appendChild(row);
+    });
+    const selected = thresholdOutcomes.find(outcome => outcome.threshold === proposed) || thresholdOutcomes[1];
+    const selectedCost = selected.falsePositives * reviewCost + selected.falseNegatives * missCost;
+    costOutput.textContent = `Threshold ${selected.threshold}: expected cost ₹${selectedCost.toLocaleString('en-IN')} per 45 test transactions. Lowest tested cost: threshold ${best.threshold}.`;
+  }
+  [reviewCostEl, missCostEl, thresholdEl].forEach(el => el.addEventListener('input', renderEconomics));
+  renderEconomics();
+</script>
+
+</body>
+</html>
